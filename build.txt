@@ -1,0 +1,3 @@
+displayName = Catharsis Mod
+author = Dragoncraft9
+version = 1.0.0

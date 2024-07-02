@@ -1,0 +1,27 @@
+NPCs: {
+	DEVOTEE: {
+		DisplayName: D E V O T E E
+
+		TownNPCMood: {
+			Content: I am content.
+			NoHome: I hate not having a home.
+			FarFromHome: I am too far from home.
+			LoveSpace: I love having so much space.
+			DislikeCrowded: I dislike how crowded I am.
+			HateCrowded: I hate how crowded I am.
+			LikeBiome: I like {BiomeName}.
+			HateBiome: I hate {BiomeName}.
+			LikeNPC: I like {NPCName}.
+			HateNPC: I hate {NPCName}.
+			LikeNPC_Princess: I like {NPCName}.
+			Princess_LovesNPC: I like {NPCName}.
+		}
+	}
+}
+
+Items: {
+	LoreBloodwalker: {
+		Tooltip: ""
+		DisplayName: Lore Bloodwalker
+	}
+}
