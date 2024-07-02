@@ -1,0 +1,2 @@
+# CatharsisMod
+Upcoming Calamity addon.
