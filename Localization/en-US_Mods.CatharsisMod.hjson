@@ -24,4 +24,9 @@ Items: {
 		Tooltip: ""
 		DisplayName: Lore Bloodwalker
 	}
+
+	DemonTrophy: {
+		Tooltip: ""
+		DisplayName: Demon Trophy
+	}
 }
