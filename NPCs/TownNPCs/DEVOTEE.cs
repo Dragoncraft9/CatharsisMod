@@ -9,7 +9,7 @@ using Terraria.ModLoader;
 using Terraria.Utilities;
 using static Terraria.ModLoader.ModContent;
 
-namespace CatharsisMod.NPCs.TownNPCs
+namespace CatharsisMod.Content.NPCs.TownNPCs
 {
 	[AutoloadHead]
 	public class DEVOTEE : ModNPC
