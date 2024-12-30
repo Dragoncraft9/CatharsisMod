@@ -10,7 +10,12 @@
 
 	<!-- References -->
 	<ItemGroup>
-		
+	  <Folder Include="Assets\Sounds\" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Reference Include="CalamityMod">
+	    <HintPath>..\..\ModReader\CalamityMod\CalamityMod.dll</HintPath>
+	  </Reference>
 	</ItemGroup>
 
 </Project>
