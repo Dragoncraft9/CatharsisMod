@@ -3,13 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Terraria.GameContent.UI;
 using Terraria.ModLoader;
 
 namespace CatharsisMod
 {
-	// Please read https://github.com/tModLoader/tModLoader/wiki/Basic-tModLoader-Modding-Guide#mod-skeleton-contents for more information about the various files in a mod.
 	public class CatharsisMod : Mod
 	{
-
-	}
+        internal static CatharsisMod Instance;
+        public override void Load()
+        {
+            Instance = this;
+        }
+        public override void Unload()
+        {
+            Instance = null;
+        }
+    }
 }
