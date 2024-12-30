@@ -16,11 +16,7 @@ NPCs: {
 			LikeNPC_Princess: I like {NPCName}.
 			Princess_LovesNPC: I like {NPCName}.
 		}
-
-		Census.SpawnCondition: Conditions unknown
 	}
-
-	Bloodwalker.DisplayName: Bloodwalker
 }
 
 Items: {

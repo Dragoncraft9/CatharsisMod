@@ -7,15 +7,10 @@
 	<PropertyGroup>
 		
 	</PropertyGroup>
-	<ItemGroup>
-	  <Reference Include="CalamityMod">
-	    <HintPath>..\..\ModReader\CalamityMod\CalamityMod.dll</HintPath>
-	  </Reference>
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Assets\Sounds\" />
-	</ItemGroup>
 
 	<!-- References -->
+	<ItemGroup>
+		
+	</ItemGroup>
 
 </Project>
