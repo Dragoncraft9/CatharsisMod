@@ -8,10 +8,8 @@ using Terraria.GameContent;
 using System.IO;
 using Terraria.DataStructures;
 using System;
-using System.Linq;
 using CalamityMod.DataStructures;
 using System.Collections.Generic;
-using Terraria.GameContent.Animations;
 
 namespace CatharsisMod.Content.NPCs.Bloodwalker
 {
@@ -44,8 +42,8 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
 
         public override void SetStaticDefaults()
         {
-            NPCID.Sets.TrailingMode[Type] = 7;
-            NPCID.Sets.TrailCacheLength[Type] = 20;
+            NPCID.Sets.TrailingMode[Type] = -1;
+            NPCID.Sets.TrailCacheLength[Type] = 30;
         }
         public override void SetDefaults()
         {
@@ -67,7 +65,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
         Player target = null;
         BloodwalkerLimb[][] Arms = new BloodwalkerLimb[6][];
         int[] armCounters = new int[6];
-        List<VerletSimulatedSegment> tailSegments;
+        Vector2[] tailLocation = new Vector2[9];
         private Tuple<float, float>[] ArmAngles =
         [
             //Back Arms
@@ -92,7 +90,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
             new(-MathHelper.PiOver2 - MathHelper.PiOver4, -MathHelper.PiOver4 / 2f),
         ];
 
-        private bool moving { get => NPC.ai[0] == 4; set => NPC.ai[0] = value ? 4 : 0; }
+        private bool moving { get => NPC.ai[0] == 6; set => NPC.ai[0] = value ? 6 : 0; }
         private int counter { get => (int)NPC.ai[1]; set => NPC.ai[1] = value; }
         private bool AttackPrep = false;
 
@@ -110,14 +108,6 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
             Arms[4] = arm;
             arm = [new(new(24, 40), MathHelper.PiOver4, 56), new(Vector2.Zero, -MathHelper.PiOver2, 52)];
             Arms[5] = arm;
-
-            tailSegments = new List<VerletSimulatedSegment>(9);
-            for (int i = 0; i < 9; i++)
-            {
-                VerletSimulatedSegment segment = new(NPC.Center + (Vector2.UnitX.RotatedBy(NPC.rotation) * -36) - Vector2.UnitX * 12 * i);
-                tailSegments.Add(segment);
-            }
-            tailSegments[0].locked = true;
 
             for (int i = 0; i < 6; i++)
             {
@@ -138,7 +128,8 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
 
             if (NPC.velocity != Vector2.Zero)
             {
-                moving = true;
+                if (!moving)
+                    moving = true;
                 NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), MathHelper.Pi / 120f);
                 NPC.rotation = NPC.velocity.ToRotation();
                 for (int i = 0; i < 6; i++)
@@ -149,6 +140,23 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
             }
             else
                 moving = false;
+
+            if(moving) //Trialing Mode 2 sets OldPos values to NPC.position when set to not store values, so we can't rely on existing trailing modes for the purposes of the tail
+            {
+                
+                for(int i = 29; i >= 0; i--)
+                {
+                    if (i == 0)
+                        NPC.oldPos[0] = NPC.position;
+                    else
+                        NPC.oldPos[i] = NPC.oldPos[i - 1];
+                }
+            }
+
+            for (int i = 0; i < tailLocation.Length; i++)
+            {
+                tailLocation[i] = NPC.oldPos[i * 3] + (NPC.Size * 0.5f) + (Vector2.UnitX * -50).RotatedBy(NPC.rotation);
+            }
 
             //Alters B;oodwalker's speed based on how its legs move
             /*
@@ -163,19 +171,6 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
             */
             if (moving)
                 UpdateArms();
-
-            tailSegments[0].position = NPC.Center + (Vector2.UnitX.RotatedBy(NPC.rotation) * -36);
-            for (int i = 0; i < tailSegments.Count; i++)
-            {
-                VerletSimulatedSegment segment = tailSegments[i];
-                if (!segment.locked)
-                {
-                    Vector2 vector = segment.position;
-                    segment.position += (NPC.rotation + MathHelper.Pi).ToRotationVector2() * 0.1f / (i + 1);
-                    segment.oldPosition = vector;
-                }
-            }
-            tailSegments = VerletSimulatedSegment.SimpleSimulation(tailSegments, 12, gravity: 0f);
         }
 
         private void UpdateArms()
@@ -202,28 +197,26 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
         public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {
             Vector2 drawPos = NPC.Center - screenPos;
-
-            if (tailSegments != null)
+            if (target != null)
             {
                 Texture2D tail1 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail1").Value;
                 Texture2D tail2 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail2").Value;
                 Texture2D tail3 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail3").Value;
-
+            
                 for (int i = 8; i >= 0; i--)
                 {
                     Texture2D tex = i < 4 ? tail1 : i < 8 ? tail2 : tail3;
                     float rot;
                     if (i == 0)
-                        rot = (NPC.Center - tailSegments[0].position).ToRotation();
+                        rot = (NPC.Center - tailLocation[i]).ToRotation();
                     else
-                        rot = (tailSegments[i - 1].position - tailSegments[i].position).ToRotation();
-                    spriteBatch.Draw(tex, tailSegments[i].position - screenPos, null, drawColor, rot - MathHelper.PiOver2, i == 8 ? new(tex.Width * 0.5f, tex.Height * 0.66f) : tex.Size() * 0.5f, 1f, 0, 0);
+                        rot = (tailLocation[i-1] - tailLocation[i]).ToRotation();
+                    spriteBatch.Draw(tex, tailLocation[i] - screenPos, null, drawColor, rot - MathHelper.PiOver2, i == 8 ? new(tex.Width * 0.5f, tex.Height * 0.66f) : tex.Size() * 0.5f, 1f, 0, 0);
                 }
-            }
-            Texture2D torso = TextureAssets.Npc[NPC.type].Value;
-            spriteBatch.Draw(torso, drawPos, null, drawColor, NPC.rotation - MathHelper.PiOver2, torso.Size() * 0.5f, 1f, 0, 0);
-            if (target != null)
-            {
+
+                Texture2D torso = TextureAssets.Npc[NPC.type].Value;
+                spriteBatch.Draw(torso, drawPos, null, drawColor, NPC.rotation - MathHelper.PiOver2, torso.Size() * 0.5f, 1f, 0, 0);
+            
                 Texture2D upperArm = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerArm1").Value;
                 Texture2D lowerArm = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerArm2").Value;
 
