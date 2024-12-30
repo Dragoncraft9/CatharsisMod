@@ -16,6 +16,8 @@ NPCs: {
 			LikeNPC_Princess: I like {NPCName}.
 			Princess_LovesNPC: I like {NPCName}.
 		}
+
+		Census.SpawnCondition: Conditions unknown
 	}
 }
 
@@ -30,3 +32,5 @@ Items: {
 		DisplayName: Demon Trophy
 	}
 }
+
+UI.WorldGen.UnderworldShrine: Erecting a Profane idol
