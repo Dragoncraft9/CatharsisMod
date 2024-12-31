@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CatharsisMod")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4d428dd0e20f36cadae9ee95f6ebb02ecb2d243c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d042e2dced82f2bcdef3a4e3cb1bdea7b90b29a9")]
 [assembly: System.Reflection.AssemblyProductAttribute("CatharsisMod")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CatharsisMod")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
