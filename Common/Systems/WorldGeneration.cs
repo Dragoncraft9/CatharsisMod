@@ -14,14 +14,22 @@ namespace CatharsisMod.Common.Systems
             int FinalIndex = tasks.FindIndex(genpass => genpass.Name.Equals("Final Cleanup"));
             if (FinalIndex != -1)
             {
-                int ShrineStructuresIndex = FinalIndex + 7;
+                int DraedonStructuresIndex = FinalIndex + 6;
 
-                int currentFinalIndex = FinalIndex;
-                tasks.Insert(ShrineStructuresIndex + 1, new PassLegacy("Underworld Shrine", (progress, config) =>
+                tasks.Insert(DraedonStructuresIndex + 1, new PassLegacy("Underworld Shrine", (progress, config) =>
                 {
                     progress.Message = Language.GetOrRegister("Mods.CatharsisMod.UI.WorldGen.UnderworldShrine").Value;
 
                     UnderworldShrine.PlaceUnderworldShrine(GenVars.structures);
+                }));
+
+                int FinalCalamityIndex = FinalIndex + 9;
+
+                tasks.Insert(FinalCalamityIndex + 1, new PassLegacy("Necrotic Crypt", (progress, config) =>
+                {
+                    progress.Message = Language.GetOrRegister("Mods.CatharsisMod.UI.WorldGen.NecroticCrypt").Value;
+
+                    NecroticCrypt.PlaceNecroticCrypt(GenVars.structures);
                 }));
             }
         }

@@ -10,8 +10,11 @@ namespace CatharsisMod.Common.Systems
     {
         private const string StructureFilePath = "Content/World/Schematics/";
 
-        internal const string WanderersCabinKey = "Underworld Shrine";
-        internal const string WanderersCabinKeyFilename = StructureFilePath + "UnderworldShrine.csch";
+        internal const string UnderworldShrineKey = "Underworld Shrine";
+        internal const string UnderworldShrineFilename = StructureFilePath + "UnderworldShrine.csch";
+
+        internal const string NecroticCryptKey = "Necrotic Crypt";
+        internal const string NecroticCryptFilename = StructureFilePath + "NecroticCrypt.csch";
 
         internal static Dictionary<string, SchematicMetaTile[,]> TileMaps =>
         typeof(SchematicManager).GetField("TileMaps", (BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)).GetValue(null) as Dictionary<string, SchematicMetaTile[,]>;
@@ -21,7 +24,8 @@ namespace CatharsisMod.Common.Systems
 
         public override void OnModLoad()
         {
-            TileMaps[WanderersCabinKey] = LoadCatharsischematic(WanderersCabinKeyFilename);
+            TileMaps[UnderworldShrineKey] = LoadCatharsischematic(UnderworldShrineFilename);
+            TileMaps[NecroticCryptKey] = LoadCatharsischematic(NecroticCryptFilename);
         }
 
         public static SchematicMetaTile[,] LoadCatharsischematic(string filename)

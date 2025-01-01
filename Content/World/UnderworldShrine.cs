@@ -11,7 +11,6 @@ using CalamityMod;
 using CatharsisMod.Content.Items.Accessories;
 using CalamityMod.Items.Materials;
 using CatharsisMod.Common.Systems;
-using CalamityMod.World;
 using CalamityMod.Tiles.Crags;
 
 namespace CatharsisMod.Content.World
@@ -48,7 +47,6 @@ namespace CatharsisMod.Content.World
             do
             {
                 int underworldTop = Main.UnderworldLayer;
-                //gen opposite to the brimstone crags
                 int placementPositionX = (Main.dungeonX < Main.maxTilesX / 2) ? WorldGen.genRand.Next((int)(Main.maxTilesX / 2 - Main.maxTilesX / 3f), (int)(Main.maxTilesX / 2 - Main.maxTilesX / 3.5f)) : WorldGen.genRand.Next((int)(Main.maxTilesX / 2 + Main.maxTilesX / 3.5f), (int)(Main.maxTilesX / 2 + Main.maxTilesX / 3f));
                 int placementPositionY = WorldGen.genRand.Next(Main.maxTilesY - 128, Main.maxTilesY - 115);
 

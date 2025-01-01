@@ -35,4 +35,9 @@ Items: {
 	}
 }
 
-UI.WorldGen.UnderworldShrine: Erecting a Profane idol
+UI: {
+	WorldGen: {
+		UnderworldShrine: Erecting a Profane idol
+		NecroticCrypt: Burying a mortal sin
+	}
+}
