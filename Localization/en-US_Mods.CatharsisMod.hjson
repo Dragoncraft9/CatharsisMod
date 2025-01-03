@@ -41,3 +41,9 @@ UI: {
 		NecroticCrypt: Burying a mortal sin
 	}
 }
+
+Projectiles: {
+	Bloodwalker.SpellSigil.DisplayName: Spell Sigil
+	ArmSigil.DisplayName: Arm Sigil
+	SkeletalArm.DisplayName: Skeletal Arm
+}

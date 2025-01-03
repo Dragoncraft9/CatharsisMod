@@ -8,8 +8,10 @@ using Terraria.GameContent;
 using System.IO;
 using Terraria.DataStructures;
 using System;
-using CalamityMod.DataStructures;
-using System.Collections.Generic;
+using static Microsoft.Xna.Framework.MathHelper;
+using Terraria.Audio;
+using CalamityMod.Particles;
+using CatharsisMod.Content.NPCs.Bloodwalker.Projectiles;
 
 namespace CatharsisMod.Content.NPCs.Bloodwalker
 {
@@ -25,7 +27,23 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
             public float Rotation = rotation;
             public readonly float Length = length;
 
-            public Vector2 GetFrontPoint() => Offset + (Rotation.ToRotationVector2() * Length);
+            public static Vector2[] GetArmPositions(NPC bloodwalker, BloodwalkerLimb[] Arm, bool top)
+            {
+                Vector2[] Positions = new Vector2[3];
+
+                BloodwalkerLimb Upper = Arm[0];
+                Vector2 UpperPos = bloodwalker.Center + Upper.Offset.RotatedBy(bloodwalker.rotation);
+                Positions[0] = UpperPos;
+                float UpperRot = bloodwalker.rotation + Upper.Rotation + (top ? -PiOver2 : (TwoPi - PiOver2));
+
+                BloodwalkerLimb Lower = Arm[1];
+                Vector2 LowerPos = UpperPos + Lower.Offset.RotatedBy(UpperRot) + (UpperRot + (top ? 0 : Pi)).ToRotationVector2() * Upper.Length;
+                Positions[1] = LowerPos;
+                float lowerRot = bloodwalker.rotation + Upper.Rotation + (top ? -PiOver2 : PiOver2 + Pi) + Lower.Rotation;
+
+                Positions[2] = LowerPos + lowerRot.ToRotationVector2() * Lower.Length;
+                return Positions;
+            }
 
             public void SendData(BinaryWriter writer)
             {
@@ -43,153 +61,500 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
         public override void SetStaticDefaults()
         {
             NPCID.Sets.TrailingMode[Type] = -1;
-            NPCID.Sets.TrailCacheLength[Type] = 48;
+            NPCID.Sets.TrailCacheLength[Type] = 31;
         }
         public override void SetDefaults()
         {
-            NPC.boss = true;
-            NPC.width = NPC.height = 44;
             NPC.Size = new Vector2(150, 150);
-            NPC.DR_NERD(0.10f);
-            NPC.LifeMaxNERB(Main.masterMode ? 330000 : Main.expertMode ? 240000 : 180000, 300000);
-            NPC.npcSlots = 5f;
-            NPC.defense = 50;
-            NPC.HitSound = SoundID.NPCHit1;
-            NPC.DeathSound = SoundID.Zombie105;
-            NPC.knockBackResist = 0f;
             NPC.noGravity = true;
             NPC.noTileCollide = true;
-            NPC.dontTakeDamage = true;
+            NPC.boss = true;
+            NPC.npcSlots = 5f;
+
+            NPC.HitSound = SoundID.NPCHit18;
+            NPC.DeathSound = SoundID.NPCDeath21;           
+
+            NPC.damage = 50;
+            NPC.DR_NERD(0.10f);
+            NPC.LifeMaxNERB(Main.masterMode ? 20000 : Main.expertMode ? 15000 : 11000, 18000);
+            NPC.knockBackResist = 0f;
+            NPC.defense = 50;
             NPC.Calamity().canBreakPlayerDefense = true;
         }
         Player target = null;
-        BloodwalkerLimb[][] Arms = new BloodwalkerLimb[6][];
-        int[] armCounters = new int[6];
-        Vector2[] tailLocation = new Vector2[11];
-        private Tuple<float, float>[] ArmAngles =
+        private readonly BloodwalkerLimb[][] Arms = new BloodwalkerLimb[6][];
+        private readonly int[] armCounters = new int[6];
+        private readonly Vector2[] tailLocation = new Vector2[11];
+        private readonly Tuple<float, float>[] ArmAngles =
         [
             //Back Arms
-            new(-MathHelper.PiOver2, MathHelper.PiOver2 - MathHelper.PiOver4),
-            new(MathHelper.PiOver2 + MathHelper.PiOver4 / 2f, MathHelper.PiOver4 / 2f),
+            new(-PiOver2, PiOver2 - PiOver4),
+            new(PiOver2 + PiOver4 / 2f, PiOver4 / 2f),
 
-            new(MathHelper.PiOver2, -MathHelper.PiOver2 + MathHelper.PiOver4),
-            new(-MathHelper.PiOver2 - MathHelper.PiOver4 / 2f, -MathHelper.PiOver4 / 2f),
+            new(PiOver2, -PiOver2 + PiOver4),
+            new(-PiOver2 - PiOver4 / 2f, -PiOver4 / 2f),
 
             //Middle Arms
-            new(-MathHelper.Pi/3f, MathHelper.PiOver4),
-            new(MathHelper.PiOver2 + MathHelper.PiOver4, MathHelper.PiOver4 / 2f),
+            new(-Pi/3f, PiOver4),
+            new(PiOver2 + PiOver4, PiOver4 / 2f),
 
-            new(MathHelper.Pi/3f, -MathHelper.PiOver4),
-            new(-MathHelper.PiOver2 - MathHelper.PiOver4, -MathHelper.PiOver4 / 2f),
+            new(Pi/3f, -PiOver4),
+            new(-PiOver2 - PiOver4, -PiOver4 / 2f),
 
             //Front Arms
-            new(-MathHelper.PiOver4, MathHelper.PiOver2),
-            new(MathHelper.PiOver2 + MathHelper.PiOver4, MathHelper.PiOver4 / 2f),
+            new(-PiOver4, PiOver2),
+            new(PiOver2 + PiOver4, PiOver4 / 2f),
 
-            new(MathHelper.PiOver4, -MathHelper.PiOver2),
-            new(-MathHelper.PiOver2 - MathHelper.PiOver4, -MathHelper.PiOver4 / 2f),
+            new(PiOver4, -PiOver2),
+            new(-PiOver2 - PiOver4, -PiOver4 / 2f),
         ];
 
-        private bool moving { get => NPC.ai[0] == 6; set => NPC.ai[0] = value ? 6 : 0; }
-        private int counter { get => (int)NPC.ai[1]; set => NPC.ai[1] = value; }
+        private enum BloodwalkerAI
+        {
+            //Phase 1
+            Chase,
+            Lunge,
+            Rush,
+            SpellPrep,
+        }
+
+        private int Counter { get => (int)NPC.ai[1]; set => NPC.ai[1] = value; }
+        private BloodwalkerAI State { get => (BloodwalkerAI)NPC.ai[0]; set => NPC.ai[0] = (float)value; }
+        Point storedArmCounters = Point.Zero;
+        SpellSigil.BloodwalkerSpells Spell = (SpellSigil.BloodwalkerSpells)(-1);
+
         private bool AttackPrep = false;
+        private int AttackLoops = 0;
 
         public override void OnSpawn(IEntitySource source)
         {
-            BloodwalkerLimb[] arm = [new(new(-32, -40), -MathHelper.PiOver2, 70), new(new(4, -7), MathHelper.PiOver2, 66)];
+            BloodwalkerLimb[] arm = [new(new(-32, -40), -PiOver2, 70), new(new(4, -7), PiOver2, 68)];
             Arms[0] = arm;
-            arm = [new(new(-32, 40), MathHelper.PiOver2, 70), new(new(0, -7), -MathHelper.PiOver2, 66)];
+            arm = [new(new(-32, 40), PiOver2, 70), new(new(0, -7), -PiOver2, 68)];
             Arms[1] = arm;
-            arm = [new(new(-8, -44), -MathHelper.Pi / 3f, 70), new(new(4, -7), MathHelper.PiOver2, 66)];
+            arm = [new(new(-8, -44), -Pi / 3f, 70), new(new(4, -7), PiOver2, 68)];
             Arms[2] = arm;
-            arm = [new(new(-8, 44), MathHelper.Pi / 3f, 70), new(new(0, -7), -MathHelper.PiOver2, 66)];
+            arm = [new(new(-8, 44), Pi / 3f, 70), new(new(0, -7), -PiOver2, 68)];
             Arms[3] = arm;
-            arm = [new(new(24, -48), -MathHelper.PiOver4, 70), new(new(4, -7), MathHelper.PiOver2, 66)];
+            arm = [new(new(24, -48), -PiOver4, 70), new(new(4, -7), PiOver2, 68)];
             Arms[4] = arm;
-            arm = [new(new(24, 48), MathHelper.PiOver4, 70), new(new(0, -7), -MathHelper.PiOver2, 66)];
+            arm = [new(new(24, 48), PiOver4, 70), new(new(0, -7), -PiOver2, 68)];
             Arms[5] = arm;
             
             for (int i = 0; i < 6; i++)
-                armCounters[i] = 16 * i;
+                armCounters[i] = 12 * i;
+
+            for (int i = 0; i < tailLocation.Length; i++)
+            {
+                tailLocation[i] = NPC.Center + (Vector2.UnitX * -50).RotatedBy(NPC.rotation);
+            }
 
             target = Main.player[Player.FindClosest(NPC.position, NPC.width, NPC.height)];
-            NPC.velocity = (target.Center - NPC.Center).SafeNormalize(Vector2.UnitX) * 4f;
         }
         public override void AI()
         {
-            target = Main.player[Player.FindClosest(NPC.position, NPC.width, NPC.height)];
+            Vector2 tailStart = NPC.Center + (Vector2.UnitX * -50).RotatedBy(NPC.rotation);
 
-            if (NPC.Center.Distance(target.Center) < 200f)
-                NPC.velocity = Vector2.Zero;
-            if (NPC.velocity == Vector2.Zero && NPC.Center.Distance(target.Center) > 300f)
-                NPC.velocity = NPC.rotation.ToRotationVector2() * 4f;
-
-            if (NPC.velocity != Vector2.Zero)
+            switch (State)
             {
-                if (!moving)
-                    moving = true;
-                NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), MathHelper.Pi / 120f);
-                NPC.rotation = NPC.velocity.ToRotation();
-                for (int i = 0; i < 6; i++)
-                {
-                    if (!AttackPrep || armCounters[i] % 60 != 0)
+                case BloodwalkerAI.Chase:
+                    if (NPC.velocity.LengthSquared() != 16f)
+                        NPC.velocity = NPC.rotation.ToRotationVector2() * 4f;
+
+                    NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), Pi / 120f);
+                    NPC.rotation = NPC.velocity.ToRotation();
+                    
+                    for (int i = 0; i < 6; i++)
                         armCounters[i]++;
-                }
-            }
-            else
-                moving = false;
+                    UpdateArms(60);
 
-            if(moving) //Trialing Mode 2 sets OldPos values to NPC.position when set to not store values, so we can't rely on existing trailing modes for the purposes of the tail
+                    if(Spell != SpellSigil.BloodwalkerSpells.None)
+                    {
+                        switch(Spell)
+                        {
+                            case SpellSigil.BloodwalkerSpells.Tears:
+                                int BoltRate = 30;
+                                if (Main.netMode != NetmodeID.MultiplayerClient && Counter % BoltRate == 0)
+                                {
+                                    bool left = Counter % (BoltRate * 2) == 0;
+                                    Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), target.Center + new Vector2(left ? -800 : 800, Main.rand.Next(-300, 300)), Vector2.UnitX * (left ? 8 : -8), ProjectileID.BloodNautilusShot, 40, 0.5f);
+                                }
+                                break;
+                            case SpellSigil.BloodwalkerSpells.Hands:
+                                if (Main.netMode != NetmodeID.MultiplayerClient && Counter == 0)
+                                    Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), new(NPC.Center.X, target.Center.Y), Vector2.Zero, ModContent.ProjectileType<ArmSigil>(), 0, 0);
+                                break;
+                        }
+                    }
+
+                    if(Counter > 300)
+                    {
+                        Spell = SpellSigil.BloodwalkerSpells.None;
+                        Counter = -1;
+                        AttackPrep = true;
+                        if (AttackLoops % 2 == 0)
+                            State = BloodwalkerAI.Lunge;
+                        else
+                        {
+                            UpdateArmInverval(60, 90);
+                            if (Main.rand.NextBool(3))
+                                State = BloodwalkerAI.Rush;
+                            else
+                            {
+                                Spell = (SpellSigil.BloodwalkerSpells)Main.rand.Next(2) + 2;
+                                State = BloodwalkerAI.SpellPrep;
+                            }
+                        }
+                    }
+
+                    break;
+                case BloodwalkerAI.Lunge:
+                    if (AttackPrep)
+                    {
+                        int interval = 60;
+
+                        NPC.velocity = NPC.rotation.ToRotationVector2() * NPC.velocity.Length();
+                        NPC.velocity *= 0.96f;
+
+                        if (Counter < 15)
+                        {
+                            float toTargetAngle = (target.Center - NPC.Center).ToRotation();
+                            NPC.rotation = NPC.rotation.AngleTowards(toTargetAngle, Pi / 32f);
+                        }
+
+                        bool prepped = true;
+
+                        for (int i = 0; i < 6; i++)
+                        {
+                            if (i < 3)
+                            {
+                                if (armCounters[i] % interval != interval / 4f)
+                                {
+                                    armCounters[i]++;
+                                    prepped = false;
+                                }
+                            }
+                            else
+                            {
+                                if (armCounters[i] % interval != 0)
+                                {
+                                    armCounters[i]++;
+                                    prepped = false;
+                                }
+                            }
+                            
+                        }
+                        if (prepped)
+                        {
+                            Counter = -1;
+                            AttackPrep = false;
+                        }
+
+                        UpdateArms(interval);
+                    }
+                    else
+                    {
+                        if (Counter == 0)
+                        {
+                            SoundEngine.PlaySound(SoundID.ForceRoarPitched);
+                            NPC.velocity = NPC.rotation.ToRotationVector2() * 24;
+
+                            for (int i = 0; i < 6; i++)
+                            {
+                                if(i < 4)
+                                    armCounters[i] = 5;
+                                else
+                                    armCounters[i] = 0;
+                            }
+                        }
+
+                        if (Counter < 15)
+                        {
+                            NPC.velocity *= 1.01f;
+
+                            for (int i = 0; i < 6; i++)
+                            {
+                                if(i < 4 || (armCounters[i] < 5 && Counter % 2 == 0))
+                                    armCounters[i]++;                                
+                            }
+                            UpdateArms(20);
+                        }
+                        else
+                        {
+                            NPC.velocity *= 0.92f;
+                            if (Counter == 15)
+                            {
+                                for (int i = 0; i < 6; i++)
+                                {
+                                    if (i < 4)
+                                        armCounters[i] = -12 * i;
+                                    else
+                                        armCounters[i] = (int)(armCounters[i] % 20 / 20f * 60f);
+                                }
+                            }
+                            for (int i = 0; i < 6; i++)
+                            {
+                                if (i < 4)
+                                    armCounters[i]++;
+                                else
+                                {
+                                    if(Counter >= 20)
+                                        armCounters[i] -= i == 4 ? 1 : 2;
+                                    if(armCounters[i] < 0)
+                                        armCounters[i] = -12 * i + armCounters[0];
+                                }
+                            }
+                            UpdateArms(60);
+                        }
+
+                        float lengthSquared = NPC.velocity.LengthSquared();
+
+                        if (lengthSquared >= 56)
+                        {
+                            //Dust.NewDustPerfect(, DustID.Blood, Scale: Main.rand.NextFloat(1f, 2f));
+                            Vector2 bloodSpawn = tailStart + Vector2.UnitY.RotatedBy(NPC.rotation) * Main.rand.NextFloat(-96f, 96f);
+                            int bloodLifetime = Main.rand.Next(22, 36);
+                            float bloodScale = Main.rand.NextFloat(0.6f, 0.8f);
+                            Color bloodColor = Color.Lerp(Color.Red, Color.DarkRed, Main.rand.NextFloat());
+                            bloodColor = Color.Lerp(bloodColor, new Color(51, 22, 94), Main.rand.NextFloat(0.65f));
+
+                            if (Main.rand.NextBool(20))
+                                bloodScale *= 2f;
+                            Particle blood = new SparkParticle(bloodSpawn, (NPC.rotation + Pi).ToRotationVector2().RotatedByRandom(PiOver4) * Main.rand.NextFloat(4f, 8f), false, bloodLifetime, bloodScale, bloodColor);
+                            GeneralParticleHandler.SpawnParticle(blood);
+                        }
+                        else if (lengthSquared < 16)
+                        {
+                            AttackLoops++;
+                            Counter = 0;
+                            State = BloodwalkerAI.Chase;
+                        }
+                    }
+                    break;
+                case BloodwalkerAI.Rush:
+                    if(AttackPrep)
+                    {
+                        NPC.velocity *= 0.98f;
+
+                        for (int i = 0; i < 6; i++)
+                            armCounters[i]++;
+                        UpdateArms(90);
+
+                        if(NPC.velocity.LengthSquared() < 1f)
+                        {
+                            SoundEngine.PlaySound(SoundID.ForceRoarPitched);
+                            UpdateArmInverval(90, 30);
+                            AttackPrep = false;
+                        }
+                    }
+                    else
+                    {
+                        if (NPC.velocity.LengthSquared() < 36f)
+                            NPC.velocity *= 1.1f;
+                        else if (NPC.velocity.LengthSquared() > 36f)
+                            NPC.velocity = NPC.rotation.ToRotationVector2() * 6f;
+
+                        NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), Pi / 120f);
+                        NPC.rotation = NPC.velocity.ToRotation();
+                        for (int i = 0; i < 6; i++)
+                            armCounters[i]++;
+
+                        UpdateArms(30);
+
+                        if (Counter > 420)
+                        {
+                            AttackLoops++;
+                            Counter = -1;
+                            AttackPrep = true;
+                            UpdateArmInverval(30, 60);
+                            State = BloodwalkerAI.Chase;
+                        }
+                    }
+                    break;
+                case BloodwalkerAI.SpellPrep:
+                    if (AttackPrep)
+                    {
+                        if (NPC.velocity.LengthSquared() > 4f)
+                            NPC.velocity *= 0.98f;
+                        else
+                        {
+                            NPC.velocity = NPC.rotation.ToRotationVector2() * 2f;
+                            AttackPrep = false;
+                            Counter = 0;
+                        }
+
+                        NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), Pi / 180f);
+                        NPC.rotation = NPC.velocity.ToRotation();
+
+                        for (int i = 0; i < 6; i++)
+                            armCounters[i]++;
+                        UpdateArms(90);
+                    }
+                    else
+                    {
+                        NPC.velocity = NPC.rotation.ToRotationVector2() * 2f;
+
+                        NPC.velocity = RotateTowards(NPC.velocity, (target.Center - NPC.Center).ToRotation(), Pi / 180f);
+                        NPC.rotation = NPC.velocity.ToRotation();
+
+                        if(Counter >= 16)
+                        {
+                            if (Counter == 16 && Main.netMode != NetmodeID.MultiplayerClient)
+                                Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), NPC.Center + NPC.rotation.ToRotationVector2() * 150f, Vector2.Zero, ModContent.ProjectileType<SpellSigil>(), 0, 0, -1, NPC.whoAmI, (int)Spell);
+
+                            if (Counter >= 320)
+                            {
+                                
+                                UpdateArmInverval(90, 60);
+
+                                armCounters[4] = armCounters[0] + 48;
+                                armCounters[5] = armCounters[0] + 60;
+
+                                Counter = -1;
+                                State = BloodwalkerAI.Chase;
+                                AttackLoops++;
+                                break;
+                            }
+                            else if (Counter < 256)
+                                Dust.NewDustPerfect(NPC.Center + NPC.rotation.ToRotationVector2() * 150f + Main.rand.NextVector2CircularEdge(32, 32), DustID.LifeDrain).velocity = NPC.velocity;
+                        }
+
+                        #region Arm Behavior
+                        if (Counter == 1)
+                        {
+                            storedArmCounters = new(armCounters[4], armCounters[5]);
+                            armCounters[4] = armCounters[5] = -1;
+                        }
+                        else
+                            armCounters[5] = armCounters[4]--;
+
+                        if(Counter <= 16)
+                        { 
+                            for (int i = 4; i < 6; i++)
+                            {
+                                Vector2 angles = GetArmAnglesAt(i, (i == 4 ? storedArmCounters.X : storedArmCounters.Y), 90);
+
+                                BloodwalkerLimb[] arm = Arms[i];
+                                int sign = (i % 2 == 0 ? 1 : -1);
+
+                                arm[0].Rotation = angles.X.AngleLerp(PiOver4 * sign, Math.Abs(armCounters[i]) / 16f);
+                            
+                                arm[1].Rotation = angles.Y.AngleLerp(PiOver2 * sign, Math.Abs(armCounters[i]) / 16f);
+                            }
+                        }
+                        if (Spell != 0 && Counter >= 290)
+                        {
+                            if(Counter == 290)
+                            {
+                                storedArmCounters = new(armCounters[0] + 102, armCounters[0] + 120);
+                                armCounters[4] = armCounters[5] = -1;
+                            }
+
+                            for (int i = 4; i < 6; i++)
+                            {
+                                Vector2 angles = GetArmAnglesAt(i, (i == 4 ? storedArmCounters.X : storedArmCounters.Y), 90);
+                                
+                                BloodwalkerLimb[] arm = Arms[i];
+                                int sign = (i % 2 == 0 ? 1 : -1);
+                                
+                                arm[0].Rotation = (PiOver4 * sign).AngleLerp(angles.X, (Counter - 290) / 30f);
+
+                                arm[1].Rotation = (PiOver2 * sign).AngleLerp(angles.Y, (Counter - 290) / 30f);
+                            }
+                        }
+
+                        for (int i = 0; i < 4; i++)
+                            armCounters[i]++;
+
+                        UpdateArms(90);
+                        #endregion
+                    }
+                    break;
+            }
+
+            Counter++;
+
+            #region Bloodwalker Tail
+            if (NPC.velocity != Vector2.Zero) //Trialing Mode 2 sets OldPos values to NPC.position when set to not store values, so we can't rely on existing trailing modes for the purposes of the tail
             {
-                
-                for(int i = NPCID.Sets.TrailCacheLength[Type] - 1; i >= 0; i--)
+                for (int i = NPCID.Sets.TrailCacheLength[Type] - 1; i >= 0; i--)
                 {
                     if (i == 0)
-                        NPC.oldPos[0] = NPC.position;
+                        NPC.oldRot[0] = NPC.rotation;
                     else
-                        NPC.oldPos[i] = NPC.oldPos[i - 1];
+                        NPC.oldRot[i] = NPC.oldRot[i - 1];
                 }
             }
+
+            float oldRot = NPC.oldRot[30];
+
             for (int i = 0; i < tailLocation.Length; i++)
             {
-                tailLocation[i] = NPC.oldPos[i * 3] + (NPC.Size * 0.5f) + (Vector2.UnitX * -50).RotatedBy(NPC.rotation);
+                if (i == 0)
+                    tailLocation[0] = tailStart;
+                else
+                    tailLocation[i] = tailLocation[i-1] + NPC.rotation.AngleLerp(oldRot, i / 10f).ToRotationVector2().RotatedBy(Pi) * 12.8f;
             }
-
-            if (moving)
-                UpdateArms();
+            #endregion
         }
 
-        private void UpdateArms()
+        private void UpdateArms(int interval)
         {
-            int interval = 60;
             for (int i = 0; i < Arms.Length; i++)
             {
                 BloodwalkerLimb[] arm = Arms[i];
-                if (arm == null || armCounters[i] == -1)
+                if (arm == null || armCounters[i] < 0)
                     continue;
                 int wrappedCount = armCounters[i] % interval;
-                int sign = (i % 2 == 0 ? 1 : -1);
                 if (wrappedCount < interval / 4f)
                 {
-                    arm[0].Rotation = MathHelper.Lerp(ArmAngles[i * 2].Item1, ArmAngles[i * 2].Item2, CalamityUtils.PolyOutEasing(wrappedCount / (interval / 4f), 1));
-                    arm[1].Rotation = MathHelper.Lerp(ArmAngles[i * 2 + 1].Item1, ArmAngles[i * 2 + 1].Item2, CalamityUtils.PolyOutEasing(wrappedCount / (interval / 4f), 1));
+                    float lerp = CalamityUtils.PolyOutEasing(wrappedCount / (interval / 4f), 1);
+                    arm[0].Rotation = Lerp(ArmAngles[i * 2].Item1, ArmAngles[i * 2].Item2, lerp);
+                    arm[1].Rotation = Lerp(ArmAngles[i * 2 + 1].Item1, ArmAngles[i * 2 + 1].Item2, lerp);
                 }
                 else
                 {
-                    arm[0].Rotation = MathHelper.Lerp(ArmAngles[i * 2].Item2, ArmAngles[i * 2].Item1, CalamityUtils.SineOutEasing((wrappedCount - (interval / 4f)) / (interval - (interval / 4f)), 1));
-                    arm[1].Rotation = MathHelper.Lerp(ArmAngles[i * 2 + 1].Item2, ArmAngles[i * 2 + 1].Item1, CalamityUtils.SineOutEasing((wrappedCount - (interval / 4f)) / (interval - (interval / 4f)), 1));
+                    float lerp = CalamityUtils.SineOutEasing((wrappedCount - (interval / 4f)) / (interval - (interval / 4f)), 1);
+                    arm[0].Rotation = Lerp(ArmAngles[i * 2].Item2, ArmAngles[i * 2].Item1, lerp);
+                    arm[1].Rotation = Lerp(ArmAngles[i * 2 + 1].Item2, ArmAngles[i * 2 + 1].Item1, lerp);
                 }
             }
         }
+
+        private void UpdateArmInverval(int oldInt, int newInt)
+        {
+            for(int i = 0; i < 6; i++)
+                armCounters[i] = (int)(armCounters[i] % oldInt / (float)oldInt * newInt);
+        }
+
+        private Vector2 GetArmAnglesAt(int index, int count, int interval)
+        {
+            int wrappedCount = count % interval;
+            float storedArmAngle0;
+            float storedArmAngle1;
+            if (wrappedCount < interval / 4f)
+            {
+                float lerp = CalamityUtils.PolyOutEasing(wrappedCount / (interval / 4f), 1);
+                storedArmAngle0 = Lerp(ArmAngles[index * 2].Item1, ArmAngles[index * 2].Item2, lerp);
+                storedArmAngle1 = Lerp(ArmAngles[index * 2 + 1].Item1, ArmAngles[index * 2 + 1].Item2, lerp);
+            }
+            else
+            {
+                float lerp = CalamityUtils.SineOutEasing((wrappedCount - (interval / 4f)) / (interval - (interval / 4f)), 1);
+                storedArmAngle0 = Lerp(ArmAngles[index * 2].Item2, ArmAngles[index * 2].Item1, lerp);
+                storedArmAngle1 = Lerp(ArmAngles[index * 2 + 1].Item2, ArmAngles[index * 2 + 1].Item1, lerp);
+            }
+            return new(storedArmAngle0, storedArmAngle1);
+        }
+
         public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {
-            Vector2 drawPos = NPC.Center - screenPos;
             if (target != null)
             {
                 Texture2D tail1 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail1").Value;
                 Texture2D tail2 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail2").Value;
                 Texture2D tail3 = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerTail3").Value;
-            
+                Color lightValue = Color.White;
                 for (int i = 10; i >= 0; i--)
                 {
                     Texture2D tex = i == 10 ? tail3 : i > 4 ? tail2 : tail1;
@@ -198,12 +563,13 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                         rot = (NPC.Center - tailLocation[i]).ToRotation();
                     else
                         rot = (tailLocation[i-1] - tailLocation[i]).ToRotation();
-                    
-                    spriteBatch.Draw(tex, tailLocation[i] - screenPos, null, drawColor, rot - MathHelper.PiOver2, i == 10 ? new(tex.Width * 0.5f, tex.Height * 0.66f) : tex.Size() * 0.5f, 1f, 0, 0);
+                    lightValue = Lighting.GetColor(tailLocation[i].ToTileCoordinates());
+
+                    spriteBatch.Draw(tex, tailLocation[i] - screenPos, null, lightValue, rot - PiOver2, i == 10 ? new(tex.Width * 0.5f, tex.Height * 0.66f) : tex.Size() * 0.5f, 1f, 0, 0);
                 }
 
                 Texture2D torso = TextureAssets.Npc[NPC.type].Value;
-                spriteBatch.Draw(torso, drawPos, null, drawColor, NPC.rotation - MathHelper.PiOver2, torso.Size() * 0.5f, 1f, 0, 0);
+                spriteBatch.Draw(torso, NPC.Center - screenPos, null, drawColor, NPC.rotation - PiOver2, torso.Size() * 0.5f, 1f, 0, 0);
             
                 Texture2D upperArm = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerArm1").Value;
                 Texture2D lowerArm = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerArm2").Value;
@@ -213,19 +579,31 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                     BloodwalkerLimb[] Arm = Arms[i];
                     if (Arm == null)
                         break;
+                    
                     BloodwalkerLimb Upper = Arm[0];
-                    Vector2 UpperDrawPos = drawPos + Upper.Offset.RotatedBy(NPC.rotation);
-                    float UpperRot = NPC.rotation + Upper.Rotation + (i % 2 == 0 ? -MathHelper.PiOver2 : (MathHelper.TwoPi - MathHelper.PiOver2));
-                    spriteBatch.Draw(upperArm, UpperDrawPos, null, drawColor, UpperRot, new(i % 2 == 0 ? 19 : 80, 16), 1f, i % 2 == 0 ? SpriteEffects.FlipHorizontally : 0, 0);
+                    Vector2 UpperDrawPos = NPC.Center + Upper.Offset.RotatedBy(NPC.rotation);
+                    float UpperRot = NPC.rotation + Upper.Rotation + (i % 2 == 0 ? -PiOver2 : (TwoPi - PiOver2));
+
+                    lightValue = Lighting.GetColor((UpperDrawPos + UpperRot.ToRotationVector2() * Upper.Length / (i % 2 == 0 ? 2f : -2f)).ToTileCoordinates());
+                    
+                    
+                    spriteBatch.Draw(upperArm, UpperDrawPos - screenPos, null, lightValue, UpperRot, new(i % 2 == 0 ? 19 : 80, 16), 1f, i % 2 == 0 ? SpriteEffects.FlipHorizontally : 0, 0);
+                    
                     BloodwalkerLimb Lower = Arm[1];
-                    Vector2 LowerDrawPos = UpperDrawPos + Lower.Offset.RotatedBy(UpperRot) + (UpperRot + (i % 2 != 0 ? MathHelper.Pi : 0)).ToRotationVector2() * Upper.Length;
-                    spriteBatch.Draw(lowerArm, LowerDrawPos, null, drawColor, NPC.rotation + Upper.Rotation + (i % 2 == 0 ? -MathHelper.PiOver2 : MathHelper.PiOver2 + MathHelper.Pi) + Lower.Rotation, new(i % 2 == 0 ? 9 : 108, 45), 1f, i % 2 == 0 ? SpriteEffects.FlipHorizontally : 0, 0);
+                    Vector2 LowerDrawPos = UpperDrawPos + Lower.Offset.RotatedBy(UpperRot) + (UpperRot + (i % 2 != 0 ? Pi : 0)).ToRotationVector2() * Upper.Length;
+                    float lowerRot = NPC.rotation + Upper.Rotation + (i % 2 == 0 ? -PiOver2 : PiOver2 + Pi) + Lower.Rotation;
+                    
+                    lightValue = Lighting.GetColor((LowerDrawPos + lowerRot.ToRotationVector2() * Lower.Length / (i % 2 == 0 ? 2f : -2f)).ToTileCoordinates());
+                    
+                    spriteBatch.Draw(lowerArm, LowerDrawPos - screenPos, null, lightValue, lowerRot, new(i % 2 == 0 ? 9 : 108, 45), 1f, i % 2 == 0 ? SpriteEffects.FlipHorizontally : 0, 0);
 
                 }
-                float headAngle = ((target.Center - NPC.Center).SafeNormalize(Vector2.UnitX) + NPC.rotation.ToRotationVector2()).ToRotation();
-
                 Texture2D head = ModContent.Request<Texture2D>("CatharsisMod/Content/NPCs/Bloodwalker/BloodwalkerHead").Value;
-                spriteBatch.Draw(head, drawPos + (NPC.rotation.ToRotationVector2() * 64), null, drawColor, headAngle - MathHelper.PiOver2, head.Size() * 0.5f, 1f, 0, 0);
+                Vector2 headPos = NPC.Center + (NPC.rotation.ToRotationVector2() * 64);
+                float headAngle = ((target.Center - headPos).SafeNormalize(Vector2.UnitX) + NPC.rotation.ToRotationVector2()).ToRotation();
+                lightValue = Lighting.GetColor(headPos.ToTileCoordinates());
+
+                spriteBatch.Draw(head, headPos - screenPos, null, lightValue, headAngle - PiOver2, head.Size() * 0.5f, 1f, 0, 0);
             }
             return false;
         }
