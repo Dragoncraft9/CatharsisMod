@@ -33,6 +33,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker.Projectiles
             Projectile.tileCollide = false;
             Projectile.hide = true;
             Projectile.scale = 1f;
+            Projectile.hostile = true;
         }
 
         int Counter { get => (int)Projectile.ai[2]; set => Projectile.ai[2] = value; }
