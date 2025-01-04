@@ -125,6 +125,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
 
         private bool AttackPrep = false;
         private int AttackLoops = 0;
+        private int AttackCounter = 0;
 
         public override void OnSpawn(IEntitySource source)
         {
@@ -174,6 +175,8 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                         {
                             case SpellSigil.BloodwalkerSpells.Tears:
                                 int BoltRate = 30;
+                                if (NPC.life / (float)NPC.lifeMax < 0.5f)
+                                    BoltRate /= 2;
                                 if (Main.netMode != NetmodeID.MultiplayerClient && Counter % BoltRate == 0)
                                 {
                                     bool left = Counter % (BoltRate * 2) == 0;
@@ -244,7 +247,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                             }
                             
                         }
-                        if (prepped)
+                        if (prepped && Counter >= 15)
                         {
                             Counter = -1;
                             AttackPrep = false;
@@ -325,9 +328,21 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                         }
                         else if (lengthSquared < 16)
                         {
-                            AttackLoops++;
-                            Counter = 0;
-                            State = BloodwalkerAI.Chase;
+                            AttackCounter++;
+                            float lifeRatio = NPC.life / (float)NPC.lifeMax;
+
+                            if (lifeRatio > 0.66f || (lifeRatio > 0.33f && AttackCounter > 1) || AttackCounter > 2)
+                            {
+                                AttackLoops++; 
+                                AttackCounter = 0;
+                                Counter = 0;
+                                State = BloodwalkerAI.Chase;
+                            }
+                            else
+                            {
+                                Counter = -15;
+                                AttackPrep = true;
+                            }
                         }
                     }
                     break;
@@ -360,6 +375,10 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                             armCounters[i]++;
 
                         UpdateArms(30);
+
+                        if(Main.netMode != NetmodeID.MultiplayerClient && NPC.life / (float)NPC.lifeMax < 0.5f && Counter % 10 == 0)
+                            for(int i = 0; i < 2; i++)
+                            Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), NPC.Center, Main.rand.NextVector2CircularEdge(4, 4), ProjectileID.BloodNautilusShot, 40, 0.5f);
 
                         if (Counter > 420)
                         {
