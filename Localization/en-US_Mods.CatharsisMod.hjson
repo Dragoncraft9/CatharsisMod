@@ -26,12 +26,26 @@ NPCs: {
 Items: {
 	LoreBloodwalker: {
 		Tooltip: ""
-		DisplayName: Lore Bloodwalker
+		DisplayName: The Bloodwalker
 	}
 
 	DemonTrophy: {
 		Tooltip: ""
 		DisplayName: Demon Trophy
+	}
+
+	Placeables: {
+		SacrificialAltar: {
+			DisplayName: Sacrificial Altar
+			Tooltip: "An altar used in the detestable worship of Bloodshed"
+		}
+	}
+
+	Summoning: {
+		SacrificialSkull: {
+			DisplayName: Sacrificial Skull
+			Tooltip: "A skull which resonates with a long forgotten tomb"
+		}
 	}
 }
 
