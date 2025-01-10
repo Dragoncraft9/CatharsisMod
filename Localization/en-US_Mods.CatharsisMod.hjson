@@ -37,14 +37,14 @@ Items: {
 	Placeables: {
 		SacrificialAltar: {
 			DisplayName: Sacrificial Altar
-			Tooltip: "An altar used in the detestable worship of Bloodshed"
+			Tooltip: An altar used in the detestable worship of Bloodshed
 		}
 	}
 
 	Summoning: {
 		SacrificialSkull: {
 			DisplayName: Sacrificial Skull
-			Tooltip: "A skull which resonates with a long forgotten tomb"
+			Tooltip: A skull which resonates with a long forgotten tomb
 		}
 	}
 }
@@ -60,4 +60,5 @@ Projectiles: {
 	Bloodwalker.SpellSigil.DisplayName: Spell Sigil
 	ArmSigil.DisplayName: Arm Sigil
 	SkeletalArm.DisplayName: Skeletal Arm
+	BloodPortal.DisplayName: Blood Portal
 }

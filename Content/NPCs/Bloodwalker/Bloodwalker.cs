@@ -173,6 +173,21 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                     {
                         switch(Spell)
                         {
+                            case SpellSigil.BloodwalkerSpells.Summon:
+                                if (Main.netMode != NetmodeID.MultiplayerClient && Counter % ((NPC.life / (float)NPC.lifeMax < 0.5f) ? 50 : 60) == 0 && Counter != 0)
+                                {
+                                    Vector2 spawnPos = target.Center;
+                                    for (int i = 0; i < 20; i++)
+                                    {
+                                        spawnPos = target.Center + Main.rand.NextVector2CircularEdge(160, 160);
+                                        if (spawnPos.Y < 0)
+                                            spawnPos.Y *= -1;
+                                        if (!Main.tile[spawnPos.ToTileCoordinates()].HasTile)
+                                            break;
+                                    }
+                                    Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), spawnPos, Vector2.Zero, ModContent.ProjectileType<BloodPortal>(), 0, 0f);
+                                }
+                                break;
                             case SpellSigil.BloodwalkerSpells.Tears:
                                 int BoltRate = 30;
                                 if (NPC.life / (float)NPC.lifeMax < 0.5f)
@@ -180,7 +195,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                                 if (Main.netMode != NetmodeID.MultiplayerClient && Counter % BoltRate == 0)
                                 {
                                     bool left = Counter % (BoltRate * 2) == 0;
-                                    Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), target.Center + new Vector2(left ? -800 : 800, Main.rand.Next(-300, 300)), Vector2.UnitX * (left ? 8 : -8), ProjectileID.BloodNautilusShot, 40, 0.5f);
+                                    Projectile.NewProjectile(Projectile.GetSource_NaturalSpawn(), target.Center + new Vector2(left ? -1000 : 1000, Main.rand.Next(-300, 300)), Vector2.UnitX * (left ? 8 : -8), ProjectileID.BloodNautilusShot, 40, 0.5f);
                                 }
                                 break;
                             case SpellSigil.BloodwalkerSpells.Hands:
@@ -204,7 +219,7 @@ namespace CatharsisMod.Content.NPCs.Bloodwalker
                                 State = BloodwalkerAI.Rush;
                             else
                             {
-                                Spell = (SpellSigil.BloodwalkerSpells)Main.rand.Next(2) + 2;
+                                Spell = (SpellSigil.BloodwalkerSpells)Main.rand.Next(3) + 1;
                                 State = BloodwalkerAI.SpellPrep;
                             }
                         }
